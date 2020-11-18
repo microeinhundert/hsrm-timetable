@@ -1,8 +1,11 @@
+const VERSION = 'v1.0.0';
+const DEFAULT_WIDGET_SIZE = 'large';
 const PERSISTENCE_ENABLED = true; // Change this to "false", run the widget once, and change back to "true" if you have problems
 const PERSISTENCE_FOLDER_NAME = 'hsrmTimetable';
 const DEFAULT_SEMESTER = 4;
 const DEFAULT_PROGRAM = 'bmm';
 const STUDIP_URL = 'https://studip.hs-rm.de/';
+const GITHUB_URL = 'https://github.com/microeinhundert/hsrm-timetable/';
 const PRIMARY_COLOR = new Color('c20008');
 
 class HsrmTimetable {
@@ -94,22 +97,26 @@ class HsrmTimetable {
    * Runs the widget.
    * This is the entry to this script.
    *
+   * @return {void}
    * @memberof HsrmTimetable
    */
   async run() {
-    const { program, semester } = this.getArgs();
-
     if (!PERSISTENCE_ENABLED) {
       this.clearPersistenceFolder();
     }
 
-    const widget = await this.renderWidget(program, semester, this.currentWeekNumber);
+    const widget = await this.renderWidget();
 
     if (!config.runsInWidget) {
-      await widget.presentLarge();
+      switch (DEFAULT_WIDGET_SIZE) {
+        case 'small': await widget.presentSmall(); break;
+        case 'medium': await widget.presentMedium(); break;
+        default: await widget.presentLarge();
+      }
     }
 
     Script.setWidget(widget);
+
     Script.complete();
   }
  
@@ -202,8 +209,24 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   get isLargeWidget() {
-    return config.widgetFamily === 'large';
-  } 
+    return config.runsInWidget ? config.widgetFamily === 'large' : true;
+  }
+
+  /**
+   * Checks if there's a script update available on GitHub.
+   *
+   * @return {boolean}
+   * @memberof HsrmTimetable
+   */
+  async checkForUpdate() {
+    try {
+      const currentVersion = VERSION;
+      const latestVersion = await new Request(`${GITHUB_URL}version.txt`).loadString();
+      return (currentVersion.replace(/[^1-9]+/g, '') < latestVersion.replace(/[^1-9]+/g, '')) ? true : false;
+    } catch(err) {
+      return false;
+    }
+  }
 
   /**
    * Gets the args as Object split at a speficic delimiter.
@@ -554,22 +577,20 @@ class HsrmTimetable {
   /**
    * Renders the widget.
    *
-   * @param {string} program
-   * @param {number} semester
-   * @param {number} weekNumber
    * @return {Widget}
    * @memberof HsrmTimetable
    */
-  async renderWidget(program, semester, weekNumber) {
-    const data = await this.getData(program, semester, weekNumber);
+  async renderWidget() {
+    const { program, semester } = this.getArgs();
+    const data = await this.getData(program, semester, this.currentWeekNumber);
     const widget = new ListWidget();
     
     const backgroundGradient = new LinearGradient();
     backgroundGradient.locations = [0, 1];
     backgroundGradient.colors = [
       Color.dynamic(Color.white(), new Color('111111')),
-      Color.dynamic(Color.white(), new Color('222222')),
-     ];
+      Color.dynamic(Color.white(), new Color('222222'))
+    ];
   
     widget.backgroundGradient = backgroundGradient;
 
@@ -577,24 +598,26 @@ class HsrmTimetable {
     widgetStack.layoutVertically();
     widgetStack.topAlignContent();
 
-    if (!this.isMediumWidget) {
-      const logoSize = this.isSmallWidget ? 18 : 25;
-      const textSize = this.isSmallWidget ? 15 : 18;
-
-      // Header
+    // Header
+    if (this.isLargeWidget || this.isSmallWidget) {
       const headerStack = widgetStack.addStack();
       headerStack.centerAlignContent();
-      const titleStack = headerStack.addStack();
-      titleStack.url = this.getWebLink(program, semester, weekNumber);
-      titleStack.spacing = 10;
-      titleStack.centerAlignContent();
-      const headerLogo = titleStack.addImage(await this.getImage('hsrm-logo.png'));
-      headerLogo.imageSize = new Size(logoSize, logoSize);
-      const headerText = titleStack.addText('Stundenplan');
-      headerText.font = Font.boldSystemFont(textSize);
 
-      if (!this.isSmallWidget) {
-        headerStack.addSpacer();
+      const titleStack = headerStack.addStack();
+      titleStack.centerAlignContent();
+      titleStack.url = this.getWebLink(program, semester, this.currentWeekNumber);
+      titleStack.spacing = 10;
+
+      if (this.isLargeWidget) {
+        const headerLogo = titleStack.addImage(await this.getImage('hsrm-logo.png'));
+        headerLogo.imageSize = new Size(25, 25);
+      }
+
+      const headerText = titleStack.addText(this.isLargeWidget ? 'Stundenplan' : 'Next Up');
+      headerText.font = Font.boldSystemFont(this.isLargeWidget ? 18 : 15);
+      headerStack.addSpacer();
+
+      if (this.isLargeWidget) {
         const headerSymbol = headerStack.addImage(SFSymbol.named('book.closed.fill').image);
         headerSymbol.imageSize = new Size(18, 18);
         headerSymbol.tintColor = Color.dynamic(Color.black(), Color.white());
@@ -619,96 +642,120 @@ class HsrmTimetable {
       .sort((a, b) => a.startOffset - b.startOffset);
     
     if (this.isSmallWidget) {
-      // Small widget
-      widgetStack.addText('Not implemented');
+      await this.renderSmallWidgetContent(eventsToday, widgetStack);
     } else {
-      // Medium or large widget
-      const renderEvent = (event) => {
-        const startTimestamp = this.timestampMidnight + event.startOffset;
-        const endTimestamp = this.timestampMidnight + event.endOffset;
-        const startTime = this.formatTime(startTimestamp);
-        const endTime = this.formatTime(endTimestamp);
-  
-        const eventStack = widgetStack.addStack();
-        eventStack.layoutVertically();
-        eventStack.setPadding(6, 0, 6, 0);
-        eventStack.url = this.getEventWebLink(program, semester, weekNumber, event.id);
-  
-        // Top Stack
-        const eventStackTop = eventStack.addStack();
-        eventStackTop.centerAlignContent();
-        eventStackTop.spacing = 10;
-        const eventNameText = eventStackTop.addText(event.name);
-        eventNameText.font = Font.regularSystemFont(this.isMediumWidget ? 15 : 18);
-        // The event is happening now
-        if (this.timestampNow >= startTimestamp) eventNameText.textColor = PRIMARY_COLOR;
-        eventStackTop.addSpacer();
-        const eventTimeText = eventStackTop.addText(`${startTime}-${endTime}`);
-        eventTimeText.font = Font.mediumSystemFont(13);
-        eventStack.addSpacer(4);
-  
-        // Bottom Stack
-        const eventStackBottom = eventStack.addStack();
-        eventStackBottom.centerAlignContent();
-        eventStackBottom.spacing = 10;
-        if (event.lecturers.length) {
-          const lecturerText = eventStackBottom.addText(event.lecturers[0].name);
-          lecturerText.font = Font.mediumSystemFont(13);
-          lecturerText.textOpacity = 0.5;
-        }
-        eventStackBottom.addSpacer();
-        event.rooms.forEach((room) => {
-          const roomStack = eventStackBottom.addStack();
-          roomStack.backgroundColor = PRIMARY_COLOR;
-          roomStack.cornerRadius = 4;
-          roomStack.setPadding(2, 4, 2, 4);
-          const roomText = roomStack.addText(room);
-          roomText.font = Font.mediumSystemFont(10);
-          roomText.textColor = Color.white();
-        });
-      };
-  
-      const renderNotice = (text) => {
-        widgetStack.addSpacer();
-  
-        const noticeStack = widgetStack.addStack();
-        noticeStack.addSpacer();
-        const noticeText = noticeStack.addText(text);
-        noticeText.centerAlignText();
-        noticeStack.addSpacer();
-      };
-
-      const maxEventsToShow = this.isMediumWidget ? 2 : 4;
-  
-      // The next x events that end in the future
-      const eventsWithEndInFuture = eventsToday
-        .filter((event) => (this.timestampMidnight + event.endOffset) >= this.timestampNow)
-        .slice(0, maxEventsToShow);
-      
-      if (!eventsToday.length) {
-        renderNotice('Du hast heute keine Veranstaltungen');
-      } else if (eventsWithEndInFuture.length) {
-        eventsWithEndInFuture.forEach((event) => renderEvent(event));
-      } else {
-        renderNotice('Du hast heute keine weiteren Veranstaltungen');
-      }
-      
-      widgetStack.addSpacer();
-      
-      // Footer
-      const hiddenEventsCount = Math.abs(eventsWithEndInFuture.length - maxEventsToShow);
-      const footerItems = [this.formatDate(this.timestampNow)];
-      if (hiddenEventsCount) {
-        footerItems.push(`${hiddenEventsCount === 1 ? 'Eine weitere Veranstaltung' : `${hiddenEventsCount} weitere Veranstaltungen`}`);
-      }
-      const footerText = widgetStack.addText(footerItems.join('  |  '));
-      footerText.font = Font.mediumSystemFont(12);
-      footerText.textOpacity = 0.5;
+      await this.renderWideWidgetContent(eventsToday, widgetStack);
     }
 
     this.setWidgetRefresh(widget);
 
     return widget;
+  }
+
+  /**
+   * Renders the small widget's content.
+   *
+   * @param {Object[]} events
+   * @param {WidgetStack} widgetStack
+   * @return {void}
+   * @memberof HsrmTimetable
+   */
+  async renderSmallWidgetContent(events, widgetStack) {
+    widgetStack.addText('Not implemented');
+  }
+
+  /**
+   * Renders the medium and large widget's content.
+   *
+   * @param {Object[]} events
+   * @param {WidgetStack} widgetStack
+   * @return {void}
+   * @memberof HsrmTimetable
+   */
+  async renderWideWidgetContent(events, widgetStack) {
+    const renderEvent = (event) => {
+      const startTimestamp = this.timestampMidnight + event.startOffset;
+      const endTimestamp = this.timestampMidnight + event.endOffset;
+      const startTime = this.formatTime(startTimestamp);
+      const endTime = this.formatTime(endTimestamp);
+
+      const eventStack = widgetStack.addStack();
+      eventStack.layoutVertically();
+      eventStack.setPadding(6, 0, 6, 0);
+      eventStack.url = this.getEventWebLink(program, semester, weekNumber, event.id);
+
+      // Top Stack
+      const eventStackTop = eventStack.addStack();
+      eventStackTop.centerAlignContent();
+      eventStackTop.spacing = 10;
+      const eventNameText = eventStackTop.addText(event.name);
+      eventNameText.font = Font.regularSystemFont(this.isMediumWidget ? 15 : 18);
+      if (this.timestampNow >= startTimestamp) eventNameText.textColor = PRIMARY_COLOR; // The event is happening now
+      eventStackTop.addSpacer();
+      const eventTimeText = eventStackTop.addText(`${startTime}-${endTime}`);
+      eventTimeText.font = Font.mediumSystemFont(13);
+      eventStack.addSpacer(4);
+
+      // Bottom Stack
+      const eventStackBottom = eventStack.addStack();
+      eventStackBottom.centerAlignContent();
+      eventStackBottom.spacing = 10;
+      if (event.lecturers.length) {
+        const lecturerText = eventStackBottom.addText(event.lecturers[0].name);
+        lecturerText.font = Font.mediumSystemFont(13);
+        lecturerText.textOpacity = 0.5;
+      }
+      eventStackBottom.addSpacer();
+      event.rooms.forEach((room) => {
+        const roomStack = eventStackBottom.addStack();
+        roomStack.backgroundColor = PRIMARY_COLOR;
+        roomStack.cornerRadius = 4;
+        roomStack.setPadding(2, 4, 2, 4);
+        const roomText = roomStack.addText(room);
+        roomText.font = Font.mediumSystemFont(10);
+        roomText.textColor = Color.white();
+      });
+    };
+
+    const renderNotice = (text) => {
+      widgetStack.addSpacer();
+
+      const noticeStack = widgetStack.addStack();
+      noticeStack.addSpacer();
+      const noticeText = noticeStack.addText(text);
+      noticeText.centerAlignText();
+      noticeStack.addSpacer();
+    };
+
+    const maxEventsToShow = this.isMediumWidget ? 2 : 4;
+
+    // The next x events that end in the future
+    const eventsWithEndInFuture = events
+      .filter((event) => (this.timestampMidnight + event.endOffset) >= this.timestampNow)
+      .slice(0, maxEventsToShow);
+    
+    if (!events.length) {
+      renderNotice('Du hast heute keine Veranstaltungen');
+    } else if (eventsWithEndInFuture.length) {
+      eventsWithEndInFuture.forEach((event) => renderEvent(event));
+    } else {
+      renderNotice('Du hast heute keine weiteren Veranstaltungen');
+    }
+    
+    widgetStack.addSpacer();
+    
+    // Footer
+    const hiddenEventsCount = Math.max(0, eventsWithEndInFuture.length - maxEventsToShow);
+    const footerItems = [this.formatDate(this.timestampNow)];
+    if (await this.checkForUpdate()) {
+      footerItems.push('Update verfügbar');
+    } else if (hiddenEventsCount) {
+      footerItems.push(`${hiddenEventsCount === 1 ? 'Eine weitere Veranstaltung' : `${hiddenEventsCount} weitere Veranstaltungen`}`);
+    }
+    const footerText = widgetStack.addText(footerItems.join('  |  '));
+    footerText.font = Font.mediumSystemFont(12);
+    footerText.textOpacity = 0.5;
+    footerText.url = GITHUB_URL;
   }
 
   /**
