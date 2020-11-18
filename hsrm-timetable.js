@@ -216,7 +216,7 @@ class HsrmTimetable {
   async checkForUpdate() {
     try {
       const currentVersion = VERSION;
-      const latestVersion = await new Request(`${GITHUB_URL}version.txt`).loadString();
+      const latestVersion = await new Request('https://raw.githubusercontent.com/microeinhundert/hsrm-timetable/master/version.txt').loadString();
       return (currentVersion.replace(/[^1-9]+/g, '') < latestVersion.replace(/[^1-9]+/g, '')) ? true : false;
     } catch(err) {
       return false;
