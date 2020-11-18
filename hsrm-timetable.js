@@ -1,5 +1,4 @@
 const VERSION = 'v1.0.0';
-const DEFAULT_WIDGET_SIZE = 'large';
 const PERSISTENCE_ENABLED = true; // Change this to "false", run the widget once, and change back to "true" if you have problems
 const PERSISTENCE_FOLDER_NAME = 'hsrmTimetable';
 const DEFAULT_SEMESTER = 4;
@@ -108,14 +107,10 @@ class HsrmTimetable {
     const widget = await this.renderWidget();
 
     if (!config.runsInWidget) {
-      switch (DEFAULT_WIDGET_SIZE) {
-        case 'small': await widget.presentSmall(); break;
-        case 'medium': await widget.presentMedium(); break;
-        default: await widget.presentLarge();
-      }
+      await widget.presentLarge();
+    } else {
+      Script.setWidget(widget);
     }
-
-    Script.setWidget(widget);
 
     Script.complete();
   }
