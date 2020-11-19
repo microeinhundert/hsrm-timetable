@@ -2,13 +2,14 @@
 # Stundenplan Widget
 
 Dieses Widget bringt den Stundenplan der Hochschule RheinMain auf den Homescreen eines iOS 14 oder iPadOS 14 Gerätes.
-Für die Nutzung wird die App *Scriptable* aus dem App Store benötigt. Aktuell wird das kleine Widget nicht unterstützt.
+Für die Nutzung wird die App *Scriptable* aus dem App Store benötigt. 
+Aktuell wird das kleine Widget nicht unterstützt.
 
 ## Einrichtung:
 
 1. [Scriptable aus dem App Store herunterladen](https://apps.apple.com/de/app/scriptable/id1405459188)
 2. Neues Widget erstellen (+ Button oben rechts in der App)
-3. Code aus hsrm-timetable.js kopieren und in App einfügen
+3. Code aus *hsrm-timetable.js* kopieren und in App einfügen
 4. Widget speichern
 5. Scriptable Widget auf Homescreen hinzufügen
 6. Widget antippen um in Einstellungen zu gelangen
