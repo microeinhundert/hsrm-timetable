@@ -1,5 +1,5 @@
 const VERSION = 'v1.0.0';
-const PERSISTENCE_ENABLED = true; // Change this to "false", run the widget once, and change back to "true" if you have problems
+const PERSISTENCE_ENABLED = true;
 const PRIMARY_COLOR = new Color('c20008');
 
 class HsrmTimetable {
@@ -11,8 +11,8 @@ class HsrmTimetable {
   constructor() {
     this.defaultUsername = '';
     this.defaultPassword = '';
-    this.defaultSemester = 4;
     this.defaultProgram = 'bmm';
+    this.defaultSemester = 4;
     this.webUrl = 'https://mm.dcsm.info/';
     this.studipUrl = 'https://studip.hs-rm.de/';
     this.githubRepoUrl = 'https://github.com/microeinhundert/hsrm-timetable/';
@@ -108,10 +108,6 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   async run() {
-    if (!PERSISTENCE_ENABLED) {
-      this.clearPersistenceFolder();
-    }
-
     const widget = await this.renderWidget();
 
     if (!config.runsInWidget) {
@@ -226,7 +222,7 @@ class HsrmTimetable {
       const currentVersion = VERSION;
       const latestVersion = await new Request('https://raw.githubusercontent.com/microeinhundert/hsrm-timetable/master/version.txt').loadString();
       return (currentVersion.replace(/[^1-9]+/g, '') < latestVersion.replace(/[^1-9]+/g, '')) ? true : false;
-    } catch(err) {
+    } catch(error) {
       return false;
     }
   }
@@ -364,18 +360,6 @@ class HsrmTimetable {
     }
 
     return [];
-  }
-
-  /**
-   * Clears the persistence folder.
-   *
-   * @return {void} 
-   * @memberof HsrmTimetable
-   */
-  clearPersistenceFolder() {
-    const dir = this.fileManager.documentsDirectory();
-    const path = this.fileManager.joinPath(dir, `${this.persistenceFolderName}/`);
-    this.fileManager.remove(path);
   }
 
   /**
@@ -609,17 +593,17 @@ class HsrmTimetable {
       const headerStack = widgetStack.addStack();
       headerStack.centerAlignContent();
 
-      const titleStack = headerStack.addStack();
-      titleStack.centerAlignContent();
-      titleStack.url = this.getWebUrlForWeek(program, semester, this.currentWeekNumber);
-      titleStack.spacing = 10;
+      const headerTextAndLogoStack = headerStack.addStack();
+      headerTextAndLogoStack.centerAlignContent();
+      headerTextAndLogoStack.url = this.getWebUrlForWeek(program, semester, this.currentWeekNumber);
+      headerTextAndLogoStack.spacing = 10;
 
       if (this.isLargeWidget) {
-        const headerLogo = titleStack.addImage(await this.getImage('hsrm-logo.png'));
+        const headerLogo = headerTextAndLogoStack.addImage(await this.getImage('hsrm-logo.png'));
         headerLogo.imageSize = new Size(25, 25);
       }
 
-      const headerText = titleStack.addText(this.isLargeWidget ? 'Stundenplan' : 'Next Up');
+      const headerText = headerTextAndLogoStack.addText(this.isLargeWidget ? 'Stundenplan' : 'Next Up');
       headerText.font = Font.boldSystemFont(this.isLargeWidget ? 18 : 15);
       headerStack.addSpacer();
 

@@ -14,7 +14,7 @@ Aktuell wird das kleine Widget nicht unterstützt.
 5. Scriptable Widget auf Homescreen hinzufügen
 6. Widget antippen um in Einstellungen zu gelangen
 7. Unter *Script* das vorher in der App hinzugefügte Script auswählen
-8. Unter *Parameter* Nutzername und Password des Hochschul-Accounts sowie Semester und Studiengang konfigurieren (siehe unten)
+8. Unter *Parameter* Nutzername und Passwort des Hochschul-Accounts sowie Semester und Studiengang konfigurieren (siehe unten)
 ### Format der Parameter:
 ```
 nutzername|passwort|studiengang|semester
