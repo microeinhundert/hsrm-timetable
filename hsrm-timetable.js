@@ -392,38 +392,12 @@ class HsrmTimetable {
       request.method = 'POST';
       request.addParameterToMultipart('username', username);
       request.addParameterToMultipart('password', password);
+      const json = request.loadJSON();
 
-      return request.loadJSON();
+      return json;
     } catch (error) {
       return { error: 'Falsche Zugangsdaten' };
     }
-  }
-
-  /**
-   * Gets the url for the current week in the web version.
-   *
-   * @param {string} program
-   * @param {number} semester
-   * @param {number} weekNumber
-   * @return {string} 
-   * @memberof HsrmTimetable
-   */
-  getWebUrlForWeek(program, semester, weekNumber) {
-    return `${this.webUrl}#/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}`;
-  }
-
-  /**
-   * Gets the url for an event in the web version.
-   *
-   * @param {string} program
-   * @param {number} semester
-   * @param {number} weekNumber
-   * @param {number} eventId
-   * @return {string} 
-   * @memberof HsrmTimetable
-   */
-  getWebUrlForEvent(program, semester, weekNumber, eventId) {
-    return `${this.getWebUrlForWeek(program, semester, weekNumber)}/show/${eventId}`;
   }
 
   /**
@@ -446,7 +420,9 @@ class HsrmTimetable {
         authorization: `Bearer ${token}`
       };
 
-      return request.loadJSON();
+      const json = request.loadJSON();
+
+      return json;
     } catch (error) {
       return { error: 'Nicht eingeloggt' };
     }
@@ -466,8 +442,9 @@ class HsrmTimetable {
       request.headers = {
         authorization: `Bearer ${token}`
       };
+      const json = request.loadJSON();
 
-      return request.loadJSON();
+      return json;
     } catch (error) {
       return { error: 'Nicht eingeloggt' };
     }
@@ -575,6 +552,33 @@ class HsrmTimetable {
       events,
       lecturers
     };
+  }
+
+  /**
+   * Gets the url for the current week in the web version.
+   *
+   * @param {string} program
+   * @param {number} semester
+   * @param {number} weekNumber
+   * @return {string} 
+   * @memberof HsrmTimetable
+   */
+  getWebUrlForWeek(program, semester, weekNumber) {
+    return `${this.webUrl}#/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}`;
+  }
+
+  /**
+   * Gets the url for an event in the web version.
+   *
+   * @param {string} program
+   * @param {number} semester
+   * @param {number} weekNumber
+   * @param {number} eventId
+   * @return {string} 
+   * @memberof HsrmTimetable
+   */
+  getWebUrlForEvent(program, semester, weekNumber, eventId) {
+    return `${this.getWebUrlForWeek(program, semester, weekNumber)}/show/${eventId}`;
   }
 
   /**
