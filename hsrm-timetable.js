@@ -222,7 +222,7 @@ class HsrmTimetable {
       const currentVersion = VERSION;
       const latestVersion = await new Request('https://raw.githubusercontent.com/microeinhundert/hsrm-timetable/master/version.txt').loadString();
       return (currentVersion.replace(/[^1-9]+/g, '') < latestVersion.replace(/[^1-9]+/g, '')) ? true : false;
-    } catch(error) {
+    } catch (error) {
       return false;
     }
   }
