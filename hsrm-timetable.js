@@ -283,7 +283,7 @@ class HsrmTimetable {
 
   /**
    * Gets an image by file name. 
-   * Fetches the image and stores it in iCloud if it does not already exist.
+   * Fetches the image and stores it in storage if it does not already exist.
    *
    * @param {string} fileName
    * @return {Promise<Image>} 
