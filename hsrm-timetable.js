@@ -1,10 +1,5 @@
 const VERSION = 'v1.0.0';
 const PERSISTENCE_ENABLED = true; // Change this to "false", run the widget once, and change back to "true" if you have problems
-const PERSISTENCE_FOLDER_NAME = 'hsrmTimetable';
-const DEFAULT_SEMESTER = 4;
-const DEFAULT_PROGRAM = 'bmm';
-const STUDIP_URL = 'https://studip.hs-rm.de/';
-const GITHUB_URL = 'https://github.com/microeinhundert/hsrm-timetable/';
 const PRIMARY_COLOR = new Color('c20008');
 
 class HsrmTimetable {
@@ -14,13 +9,28 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   constructor() {
+    this.defaultUsername = '';
+    this.defaultPassword = '';
+    this.defaultSemester = 4;
+    this.defaultProgram = 'bmm';
+    this.webUrl = 'https://mm.dcsm.info/';
+    this.studipUrl = 'https://studip.hs-rm.de/';
+    this.githubRepoUrl = 'https://github.com/microeinhundert/hsrm-timetable/';
     this.fileManager = FileManager.local();
-
+    this.persistenceFolderName = 'hsrmTimetable';
     this.images = [{
       fileName: 'hsrm-logo.png',
       url: 'https://www.dropbox.com/s/pcio8g6lygj27p0/hsrm-logo.png?raw=1'
     }];
-
+    this.daysOfWeek = [
+      'mon',
+      'tue',
+      'wed',
+      'thu',
+      'fri',
+      'sat',
+      'sun'
+    ];
     this.timeslots = [
       {
         slot: 1,
@@ -88,8 +98,6 @@ class HsrmTimetable {
         endOffset: 69300000
       }
     ];
-
-    this.daysOfWeek = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
   }
 
   /**
@@ -233,10 +241,10 @@ class HsrmTimetable {
    */
   getArgs(delimiter = '|') {
     const [
-      username,
-      password,
-      program = DEFAULT_PROGRAM,
-      semester = DEFAULT_SEMESTER
+      username = this.defaultUsername,
+      password = this.defaultPassword,
+      program = this.defaultProgram,
+      semester = this.defaultSemester
     ] = args.widgetParameter?.split(delimiter) ?? [];
 
     return {
@@ -283,7 +291,7 @@ class HsrmTimetable {
    */
   async getImage(fileName) {
     const dir = this.fileManager.documentsDirectory();
-    let path = this.fileManager.joinPath(dir, `${PERSISTENCE_FOLDER_NAME}/`);
+    let path = this.fileManager.joinPath(dir, `${this.persistenceFolderName}/`);
 
     // Create the persistence directory if it does not already exist
     if (!this.fileManager.fileExists(path)) this.fileManager.createDirectory(path, false);
@@ -326,7 +334,7 @@ class HsrmTimetable {
     if (!PERSISTENCE_ENABLED) return;
 
     const dir = this.fileManager.documentsDirectory();
-    let path = this.fileManager.joinPath(dir, `${PERSISTENCE_FOLDER_NAME}/`);
+    let path = this.fileManager.joinPath(dir, `${this.persistenceFolderName}/`);
 
     // Create the persistence directory if it does not already exist
     if (!this.fileManager.fileExists(path)) this.fileManager.createDirectory(path, false);
@@ -347,7 +355,7 @@ class HsrmTimetable {
     const dir = this.fileManager.documentsDirectory();
     const path = this.fileManager.joinPath(
       dir,
-      `${PERSISTENCE_FOLDER_NAME}/${fileName}`
+      `${this.persistenceFolderName}/${fileName}`
     );
 
     if (PERSISTENCE_ENABLED && this.fileManager.fileExists(path)) {
@@ -366,7 +374,7 @@ class HsrmTimetable {
    */
   clearPersistenceFolder() {
     const dir = this.fileManager.documentsDirectory();
-    const path = this.fileManager.joinPath(dir, `${PERSISTENCE_FOLDER_NAME}/`);
+    const path = this.fileManager.joinPath(dir, `${this.persistenceFolderName}/`);
     this.fileManager.remove(path);
   }
 
@@ -380,7 +388,7 @@ class HsrmTimetable {
    */
   loginUser(username, password) {
     try {
-      const request = new Request('https://mm.dcsm.info/api/login');
+      const request = new Request(`${this.webUrl}api/login`);
       request.method = 'POST';
       request.addParameterToMultipart('username', username);
       request.addParameterToMultipart('password', password);
@@ -392,7 +400,7 @@ class HsrmTimetable {
   }
 
   /**
-   * Gets the link to the web version of the timetable.
+   * Gets the url for the current week in the web version.
    *
    * @param {string} program
    * @param {number} semester
@@ -400,12 +408,12 @@ class HsrmTimetable {
    * @return {string} 
    * @memberof HsrmTimetable
    */
-  getWebLink(program, semester, weekNumber) {
-    return `https://mm.dcsm.info/#/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}`;
+  getWebUrlForWeek(program, semester, weekNumber) {
+    return `${this.webUrl}#/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}`;
   }
 
   /**
-   * Gets the link to an event in the web version.
+   * Gets the url for an event in the web version.
    *
    * @param {string} program
    * @param {number} semester
@@ -414,8 +422,8 @@ class HsrmTimetable {
    * @return {string} 
    * @memberof HsrmTimetable
    */
-  getEventWebLink(program, semester, weekNumber, eventId) {
-    return `${this.getWebLink(program, semester, weekNumber)}/show/${eventId}`;
+  getWebUrlForEvent(program, semester, weekNumber, eventId) {
+    return `${this.getWebUrlForWeek(program, semester, weekNumber)}/show/${eventId}`;
   }
 
   /**
@@ -431,7 +439,7 @@ class HsrmTimetable {
   fetchEvents(token, program, semester, weekNumber) {
     try {
       const request = new Request(
-        `https://mm.dcsm.info/api/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}/events`
+        `${this.webUrl}api/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}/events`
       );
       request.method = 'GET';
       request.headers = {
@@ -453,7 +461,7 @@ class HsrmTimetable {
    */
   fetchLecturers(token) {
     try {
-      const request = new Request('https://mm.dcsm.info/api/lecturers');
+      const request = new Request(`${this.webUrl}api/lecturers`);
       request.method = 'GET';
       request.headers = {
         authorization: `Bearer ${token}`
@@ -600,7 +608,7 @@ class HsrmTimetable {
 
       const titleStack = headerStack.addStack();
       titleStack.centerAlignContent();
-      titleStack.url = this.getWebLink(program, semester, this.currentWeekNumber);
+      titleStack.url = this.getWebUrlForWeek(program, semester, this.currentWeekNumber);
       titleStack.spacing = 10;
 
       if (this.isLargeWidget) {
@@ -616,7 +624,7 @@ class HsrmTimetable {
         const headerSymbol = headerStack.addImage(SFSymbol.named('book.closed.fill').image);
         headerSymbol.imageSize = new Size(18, 18);
         headerSymbol.tintColor = Color.dynamic(Color.black(), Color.white());
-        headerSymbol.url = STUDIP_URL;
+        headerSymbol.url = this.studipUrl;
       }
 
       widgetStack.addSpacer(20);
@@ -668,6 +676,8 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   async renderWideWidgetContent(events, widgetStack) {
+    const { program, semester } = this.getArgs();
+
     const renderEvent = (event) => {
       const startTimestamp = this.timestampMidnight + event.startOffset;
       const endTimestamp = this.timestampMidnight + event.endOffset;
@@ -677,7 +687,7 @@ class HsrmTimetable {
       const eventStack = widgetStack.addStack();
       eventStack.layoutVertically();
       eventStack.setPadding(6, 0, 6, 0);
-      eventStack.url = this.getEventWebLink(program, semester, weekNumber, event.id);
+      eventStack.url = this.getWebUrlForEvent(program, semester, this.currentWeekNumber, event.id);
 
       // Top Stack
       const eventStackTop = eventStack.addStack();
@@ -740,9 +750,10 @@ class HsrmTimetable {
     widgetStack.addSpacer();
     
     // Footer
+    const updateAvailable = await this.checkForUpdate();
     const hiddenEventsCount = Math.max(0, eventsWithEndInFuture.length - maxEventsToShow);
     const footerItems = [this.formatDate(this.timestampNow)];
-    if (await this.checkForUpdate()) {
+    if (updateAvailable) {
       footerItems.push('Update verfügbar');
     } else if (hiddenEventsCount) {
       footerItems.push(`${hiddenEventsCount === 1 ? 'Eine weitere Veranstaltung' : `${hiddenEventsCount} weitere Veranstaltungen`}`);
@@ -750,7 +761,7 @@ class HsrmTimetable {
     const footerText = widgetStack.addText(footerItems.join('  |  '));
     footerText.font = Font.mediumSystemFont(12);
     footerText.textOpacity = 0.5;
-    footerText.url = GITHUB_URL;
+    if (updateAvailable) footerText.url = this.githubRepoUrl;
   }
 
   /**
