@@ -386,13 +386,13 @@ class HsrmTimetable {
    * @return {Object} 
    * @memberof HsrmTimetable
    */
-  loginUser(username, password) {
+  async loginUser(username, password) {
     try {
       const request = new Request(`${this.webUrl}api/login`);
       request.method = 'POST';
       request.addParameterToMultipart('username', username);
       request.addParameterToMultipart('password', password);
-      const json = request.loadJSON();
+      const json = await request.loadJSON();
 
       return json;
     } catch (error) {
@@ -410,7 +410,7 @@ class HsrmTimetable {
    * @return {array} 
    * @memberof HsrmTimetable
    */
-  fetchEvents(token, program, semester, weekNumber) {
+  async fetchEvents(token, program, semester, weekNumber) {
     try {
       const request = new Request(
         `${this.webUrl}api/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}/events`
@@ -419,12 +419,11 @@ class HsrmTimetable {
       request.headers = {
         authorization: `Bearer ${token}`
       };
-
-      const json = request.loadJSON();
+      const json = await request.loadJSON();
 
       return json;
     } catch (error) {
-      return { error: 'Nicht eingeloggt' };
+      return { error: 'Nicht eingeloggt oder falsche Zugangsdaten' };
     }
   }
 
@@ -435,18 +434,18 @@ class HsrmTimetable {
    * @return {array} 
    * @memberof HsrmTimetable
    */
-  fetchLecturers(token) {
+  async fetchLecturers(token) {
     try {
       const request = new Request(`${this.webUrl}api/lecturers`);
       request.method = 'GET';
       request.headers = {
         authorization: `Bearer ${token}`
       };
-      const json = request.loadJSON();
+      const json = await request.loadJSON();
 
       return json;
     } catch (error) {
-      return { error: 'Nicht eingeloggt' };
+      return { error: 'Nicht eingeloggt oder falsche Zugangsdaten' };
     }
   }
 
@@ -634,11 +633,17 @@ class HsrmTimetable {
       widgetStack.addSpacer(20);
     }
     
-    // Show an error message if an error occured
+    // Show error message if an error occured
     if (data.events.error) {
-      const error = widgetStack.addText(data.events.error);
-      error.font = Font.mediumSystemFont(13);
-      error.textOpacity = 0.5;
+      widgetStack.addSpacer();
+
+      const errorStack = widgetStack.addStack();
+      errorStack.addSpacer();
+      const errorText = errorStack.addText(data.events.error);
+      errorText.centerAlignText();
+      errorStack.addSpacer();
+
+      widgetStack.addSpacer();
 
       return widget;
     }
