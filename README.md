@@ -2,7 +2,7 @@
 # Stundenplan Widget
 
 Dieses Widget bringt den Stundenplan der Hochschule RheinMain auf den Homescreen eines iOS 14 oder iPadOS 14 Gerätes.
-Für die Nutzung wird die App *Scriptable* aus dem App Store benötigt. Aktuell wird nur die Mittlere sowie die Große Widget-Größe unterstützt.
+Für die Nutzung wird die App *Scriptable* aus dem App Store benötigt. Aktuell wird das kleine Widget nicht unterstützt.
 
 ## Einrichtung:
 
