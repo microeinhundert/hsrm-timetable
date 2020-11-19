@@ -664,7 +664,7 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   async renderSmallWidgetContent(events, widgetStack) {
-    widgetStack.addText('Not implemented');
+    widgetStack.addText('Coming soon');
   }
 
   /**
