@@ -656,6 +656,29 @@ class HsrmTimetable {
   }
 
   /**
+   * Gets the conference service from a string.
+   *
+   * @param {string} string
+   * @return {string}
+   * @memberof HsrmTimetable
+   */
+  getConferenceService(string) {
+    const lowercaseString = string.toLowerCase();
+
+    let conferenceServiceName = 'Online';
+    
+    if (lowercaseString.includes('zoom')) {
+      conferenceServiceName = 'Zoom';
+    } else if (lowercaseString.includes('webex')) {
+      conferenceServiceName = 'Webex';
+    } else if (lowercaseString.includes('teams')) {
+      conferenceServiceName = 'MS Teams';
+    }
+
+    return conferenceServiceName;
+  }
+
+  /**
    * Renders the small widget's content.
    *
    * @param {Object[]} events
@@ -698,6 +721,91 @@ class HsrmTimetable {
   }
 
   /**
+   * Renders a room.
+   *
+   * @param {WidgetStack} parentStack
+   * @param {string} roomName
+   * @return {void}
+   * @memberof HsrmTimetable
+   */
+  renderRoom(parentStack, roomName) {
+    const roomStack = parentStack.addStack();
+    roomStack.backgroundColor = PRIMARY_COLOR;
+    roomStack.cornerRadius = 4;
+    roomStack.setPadding(2, 4, 2, 4);
+    const roomText = roomStack.addText(roomName);
+    roomText.font = Font.mediumSystemFont(10);
+    roomText.textColor = Color.white();
+  }
+
+  /**
+   * Renders a notice.
+   *
+   * @param {WidgetStack} parentStack
+   * @param {string} text
+   * @return {void}
+   * @memberof HsrmTimetable
+   */
+  renderNotice(parentStack, text) {
+    const noticeStack = parentStack.addStack();
+    noticeStack.addSpacer();
+    const noticeText = noticeStack.addText(text);
+    noticeText.centerAlignText();
+    noticeStack.addSpacer();
+  }
+
+  /**
+   * Renders a single event.
+   *
+   * @param {WidgetStack} parentStack
+   * @param {Object} event
+   * @param {string} program
+   * @param {number} semester
+   * @return {void}
+   * @memberof HsrmTimetable
+   */
+  renderEvent(parentStack, event, program, semester) {
+    const startTimestamp = this.timestampMidnight + event.startOffset;
+    const endTimestamp = this.timestampMidnight + event.endOffset;
+    const startTime = this.formatTime(startTimestamp);
+    const endTime = this.formatTime(endTimestamp);
+
+    const eventStack = parentStack.addStack();
+    eventStack.layoutVertically();
+    eventStack.setPadding(6, 0, 6, 0);
+    eventStack.url = this.getWebUrlForEvent(program, semester, this.currentWeekNumber, event.id);
+
+    // Top Stack
+    const eventStackTop = eventStack.addStack();
+    eventStackTop.centerAlignContent();
+    eventStackTop.spacing = 10;
+    const eventNameText = eventStackTop.addText(event.name);
+    eventNameText.font = Font.regularSystemFont(this.isMediumWidget ? 15 : 18);
+    if (this.timestampNow >= startTimestamp) eventNameText.textColor = PRIMARY_COLOR; // The event is happening now
+    eventStackTop.addSpacer();
+    const eventTimeText = eventStackTop.addText(`${startTime}-${endTime}`);
+    eventTimeText.font = Font.mediumMonospacedSystemFont(13);
+    eventStack.addSpacer(4);
+
+    // Bottom Stack
+    const eventStackBottom = eventStack.addStack();
+    eventStackBottom.centerAlignContent();
+    eventStackBottom.spacing = 10;
+    if (event.lecturers.length) {
+      const lecturerText = eventStackBottom.addText(event.lecturers[0].name);
+      lecturerText.font = Font.mediumMonospacedSystemFont(13);
+      lecturerText.textOpacity = 0.5;
+    }
+    eventStackBottom.addSpacer();
+
+    if (event.rooms.length) {
+      event.rooms.forEach((roomName) => this.renderRoom(eventStackBottom, roomName));
+    } else {
+      this.renderRoom(eventStackBottom, this.getConferenceService(event.note))
+    }
+  }
+
+  /**
    * Renders the medium and large widget's content.
    *
    * @param {Object[]} events
@@ -708,70 +816,20 @@ class HsrmTimetable {
   async renderWideWidgetContent(events, widgetStack) {
     const { program, semester } = this.getArgs();
 
-    const renderEvent = (event) => {
-      const startTimestamp = this.timestampMidnight + event.startOffset;
-      const endTimestamp = this.timestampMidnight + event.endOffset;
-      const startTime = this.formatTime(startTimestamp);
-      const endTime = this.formatTime(endTimestamp);
-
-      const eventStack = widgetStack.addStack();
-      eventStack.layoutVertically();
-      eventStack.setPadding(6, 0, 6, 0);
-      eventStack.url = this.getWebUrlForEvent(program, semester, this.currentWeekNumber, event.id);
-
-      // Top Stack
-      const eventStackTop = eventStack.addStack();
-      eventStackTop.centerAlignContent();
-      eventStackTop.spacing = 10;
-      const eventNameText = eventStackTop.addText(event.name);
-      eventNameText.font = Font.regularSystemFont(this.isMediumWidget ? 15 : 18);
-      if (this.timestampNow >= startTimestamp) eventNameText.textColor = PRIMARY_COLOR; // The event is happening now
-      eventStackTop.addSpacer();
-      const eventTimeText = eventStackTop.addText(`${startTime}-${endTime}`);
-      eventTimeText.font = Font.mediumMonospacedSystemFont(13);
-      eventStack.addSpacer(4);
-
-      // Bottom Stack
-      const eventStackBottom = eventStack.addStack();
-      eventStackBottom.centerAlignContent();
-      eventStackBottom.spacing = 10;
-      if (event.lecturers.length) {
-        const lecturerText = eventStackBottom.addText(event.lecturers[0].name);
-        lecturerText.font = Font.mediumMonospacedSystemFont(13);
-        lecturerText.textOpacity = 0.5;
-      }
-      eventStackBottom.addSpacer();
-      event.rooms.forEach((room) => {
-        const roomStack = eventStackBottom.addStack();
-        roomStack.backgroundColor = PRIMARY_COLOR;
-        roomStack.cornerRadius = 4;
-        roomStack.setPadding(2, 4, 2, 4);
-        const roomText = roomStack.addText(room);
-        roomText.font = Font.mediumSystemFont(10);
-        roomText.textColor = Color.white();
-      });
-    };
-
-    const renderNotice = (text) => {
-      widgetStack.addSpacer();
-
-      const noticeStack = widgetStack.addStack();
-      noticeStack.addSpacer();
-      const noticeText = noticeStack.addText(text);
-      noticeText.centerAlignText();
-      noticeStack.addSpacer();
-    };
-
     const maxEventsToShow = this.isMediumWidget ? 2 : 4;
     const eventsWithEndInFuture = events
       .filter((event) => (this.timestampMidnight + event.endOffset) >= this.timestampNow);
     
     if (!events.length) {
-      renderNotice('Du hast heute keine Veranstaltungen');
+      widgetStack.addSpacer();
+      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
     } else if (eventsWithEndInFuture.length) {
-      eventsWithEndInFuture.slice(0, maxEventsToShow).forEach((event) => renderEvent(event));
+      eventsWithEndInFuture
+        .slice(0, maxEventsToShow)
+        .forEach((event) => this.renderEvent(widgetStack, event, program, semester));
     } else {
-      renderNotice('Du hast heute keine weiteren Veranstaltungen');
+      widgetStack.addSpacer();
+      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
     }
     
     widgetStack.addSpacer();
