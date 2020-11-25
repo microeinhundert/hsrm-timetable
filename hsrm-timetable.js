@@ -111,7 +111,7 @@ class HsrmTimetable {
     const widget = await this.renderWidget();
 
     if (!config.runsInWidget) {
-      await widget.presentLarge();
+      await widget.presentSmall();
     } else {
       Script.setWidget(widget);
     }
@@ -186,7 +186,7 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   get isSmallWidget() {
-    return config.widgetFamily === 'small';
+    return config.runsInWidget ? config.widgetFamily === 'small' : true;
   }
 
   /**
@@ -208,7 +208,7 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   get isLargeWidget() {
-    return config.runsInWidget ? config.widgetFamily === 'large' : true;
+    return config.widgetFamily === 'large';
   }
 
   /**
@@ -603,8 +603,15 @@ class HsrmTimetable {
         headerLogo.imageSize = new Size(25, 25);
       }
 
-      const headerText = headerTextAndLogoStack.addText(this.isLargeWidget ? 'Stundenplan' : 'Next Up');
-      headerText.font = Font.boldSystemFont(this.isLargeWidget ? 18 : 15);
+      if (this.isLargeWidget) {
+        const headerText = headerTextAndLogoStack.addText('Stundenplan');
+        headerText.font = Font.boldSystemFont(18);
+      } else {
+        const headerText = headerTextAndLogoStack.addText('Next Up'.toUpperCase());
+        headerText.font = Font.mediumSystemFont(13);
+        headerText.textColor = PRIMARY_COLOR;
+      }
+
       headerStack.addSpacer();
 
       if (this.isLargeWidget) {
@@ -614,7 +621,7 @@ class HsrmTimetable {
         headerSymbol.url = this.studipUrl;
       }
 
-      widgetStack.addSpacer(20);
+      if (this.isLargeWidget) widgetStack.addSpacer(20);
     }
     
     // Show error message if an error occured
@@ -638,7 +645,7 @@ class HsrmTimetable {
       .sort((a, b) => a.startOffset - b.startOffset);
     
     if (this.isSmallWidget) {
-      await this.renderSmallWidgetContent(eventsToday, widgetStack);
+      await this.renderSmallWidgetContent(eventsToday, widgetStack, widget);
     } else {
       await this.renderWideWidgetContent(eventsToday, widgetStack);
     }
@@ -653,11 +660,41 @@ class HsrmTimetable {
    *
    * @param {Object[]} events
    * @param {WidgetStack} widgetStack
+   * @param {Widget} widget
    * @return {void}
    * @memberof HsrmTimetable
    */
-  async renderSmallWidgetContent(events, widgetStack) {
-    widgetStack.addText('Coming soon');
+  async renderSmallWidgetContent(events, widgetStack, widget) {
+    const { program, semester } = this.getArgs();
+
+    const upcomingEvent = events
+      .find((event) => (this.timestampMidnight + event.startOffset) >= this.timestampNow);
+
+    widget.url = upcomingEvent?.note ? this.getWebUrlForEvent(program, semester, this.currentWeekNumber, upcomingEvent.id) : this.studipUrl;
+
+    if (upcomingEvent) {
+      const startTimestamp = this.timestampMidnight + upcomingEvent.startOffset;
+      const startTime = this.formatTime(startTimestamp);
+  
+      const eventStack = widgetStack.addStack();
+      eventStack.layoutVertically();
+      const eventNameText = eventStack.addText(upcomingEvent.name);
+      eventNameText.font = Font.lightSystemFont(30);
+  
+      eventStack.addSpacer();
+      
+      const eventStartTimeText = eventStack.addText(`Start: ${startTime}`);
+      eventStartTimeText.font = Font.regularSystemFont(16);
+
+      eventStack.addSpacer(3);
+
+      const maxCharCount = 40;
+      const eventNoteText = eventStack.addText(upcomingEvent.note.slice(0, maxCharCount) + (upcomingEvent.length > maxCharCount ? '...' : '') || 'Siehe Stud.IP');
+      eventNoteText.font = Font.mediumSystemFont(13);
+      eventNoteText.textOpacity = 0.5;
+  
+      eventStack.addSpacer();
+    }
   }
 
   /**
@@ -691,7 +728,7 @@ class HsrmTimetable {
       if (this.timestampNow >= startTimestamp) eventNameText.textColor = PRIMARY_COLOR; // The event is happening now
       eventStackTop.addSpacer();
       const eventTimeText = eventStackTop.addText(`${startTime}-${endTime}`);
-      eventTimeText.font = Font.mediumSystemFont(13);
+      eventTimeText.font = Font.mediumMonospacedSystemFont(13);
       eventStack.addSpacer(4);
 
       // Bottom Stack
@@ -700,7 +737,7 @@ class HsrmTimetable {
       eventStackBottom.spacing = 10;
       if (event.lecturers.length) {
         const lecturerText = eventStackBottom.addText(event.lecturers[0].name);
-        lecturerText.font = Font.mediumSystemFont(13);
+        lecturerText.font = Font.mediumMonospacedSystemFont(13);
         lecturerText.textOpacity = 0.5;
       }
       eventStackBottom.addSpacer();
@@ -726,16 +763,13 @@ class HsrmTimetable {
     };
 
     const maxEventsToShow = this.isMediumWidget ? 2 : 4;
-
-    // The next x events that end in the future
     const eventsWithEndInFuture = events
-      .filter((event) => (this.timestampMidnight + event.endOffset) >= this.timestampNow)
-      .slice(0, maxEventsToShow);
+      .filter((event) => (this.timestampMidnight + event.endOffset) >= this.timestampNow);
     
     if (!events.length) {
       renderNotice('Du hast heute keine Veranstaltungen');
     } else if (eventsWithEndInFuture.length) {
-      eventsWithEndInFuture.forEach((event) => renderEvent(event));
+      eventsWithEndInFuture.slice(0, maxEventsToShow).forEach((event) => renderEvent(event));
     } else {
       renderNotice('Du hast heute keine weiteren Veranstaltungen');
     }
