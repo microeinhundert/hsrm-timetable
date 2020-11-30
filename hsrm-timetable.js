@@ -575,54 +575,17 @@ class HsrmTimetable {
     const data = await this.getData(program, semester, this.currentWeekNumber);
     const widget = new ListWidget();
     
-    const backgroundGradient = new LinearGradient();
-    backgroundGradient.locations = [0, 1];
-    backgroundGradient.colors = [
+    const widgetBackgroundGradient = new LinearGradient();
+    widgetBackgroundGradient.locations = [0, 1];
+    widgetBackgroundGradient.colors = [
       Color.dynamic(Color.white(), new Color('111111')),
       Color.dynamic(Color.white(), new Color('222222'))
     ];
-  
-    widget.backgroundGradient = backgroundGradient;
+    widget.backgroundGradient = widgetBackgroundGradient;
 
     const widgetStack = widget.addStack();
     widgetStack.layoutVertically();
     widgetStack.topAlignContent();
-
-    // Header
-    if (this.isLargeWidget || this.isSmallWidget) {
-      const headerStack = widgetStack.addStack();
-      headerStack.centerAlignContent();
-
-      const headerTextAndLogoStack = headerStack.addStack();
-      headerTextAndLogoStack.centerAlignContent();
-      headerTextAndLogoStack.url = this.getWebUrlForWeek(program, semester, this.currentWeekNumber);
-      headerTextAndLogoStack.spacing = 10;
-
-      if (this.isLargeWidget) {
-        const headerLogo = headerTextAndLogoStack.addImage(await this.getImage('hsrm-logo.png'));
-        headerLogo.imageSize = new Size(25, 25);
-      }
-
-      if (this.isLargeWidget) {
-        const headerText = headerTextAndLogoStack.addText('Stundenplan');
-        headerText.font = Font.boldSystemFont(18);
-      } else {
-        const headerText = headerTextAndLogoStack.addText('Next Up'.toUpperCase());
-        headerText.font = Font.mediumSystemFont(13);
-        headerText.textColor = PRIMARY_COLOR;
-      }
-
-      headerStack.addSpacer();
-
-      if (this.isLargeWidget) {
-        const headerSymbol = headerStack.addImage(SFSymbol.named('book.closed.fill').image);
-        headerSymbol.imageSize = new Size(18, 18);
-        headerSymbol.tintColor = Color.dynamic(Color.black(), Color.white());
-        headerSymbol.url = this.studipUrl;
-      }
-
-      if (this.isLargeWidget) widgetStack.addSpacer(20);
-    }
     
     // Show error message if an error occured
     if (data.events.error) {
@@ -656,26 +619,28 @@ class HsrmTimetable {
   }
 
   /**
-   * Gets the conference service from a string.
+   * Gets the type of online event.
    *
    * @param {string} string
    * @return {string}
    * @memberof HsrmTimetable
    */
-  getConferenceService(string) {
-    const lowercaseString = string.toLowerCase();
+  getOnlineType(string) {
+    const haystack = string.toLowerCase();
 
-    let conferenceServiceName = 'Online';
+    let type = 'Online';
     
-    if (lowercaseString.includes('zoom')) {
-      conferenceServiceName = 'Zoom';
-    } else if (lowercaseString.includes('webex')) {
-      conferenceServiceName = 'Webex';
-    } else if (lowercaseString.includes('teams')) {
-      conferenceServiceName = 'MS Teams';
+    if (haystack.includes('zoom')) {
+      type = 'Zoom';
+    } else if (haystack.includes('webex')) {
+      type = 'Webex';
+    } else if (haystack.includes('teams')) {
+      type = 'MS Teams';
+    } else if (haystack.includes('ilias')) {
+      type = 'ILIAS';
     }
 
-    return conferenceServiceName;
+    return type;
   }
 
   /**
@@ -690,33 +655,44 @@ class HsrmTimetable {
   async renderSmallWidgetContent(events, widgetStack, widget) {
     const { program, semester } = this.getArgs();
 
-    const upcomingEvent = events
+    const eventUpcoming = events
       .find((event) => (this.timestampMidnight + event.startOffset) >= this.timestampNow);
 
-    widget.url = upcomingEvent?.note ? this.getWebUrlForEvent(program, semester, this.currentWeekNumber, upcomingEvent.id) : this.studipUrl;
+    // Small widgets only support one tap area
+    widget.url = eventUpcoming?.note ? this.getWebUrlForEvent(program, semester, this.currentWeekNumber, eventUpcoming.id) : this.studipUrl;
 
-    if (upcomingEvent) {
-      const startTimestamp = this.timestampMidnight + upcomingEvent.startOffset;
-      const startTime = this.formatTime(startTimestamp);
-  
+    if (eventUpcoming) {    
+      // Header
+      const headerStack = widgetStack.addStack();
+      const headerTitleText = headerStack.addText('Next Up'.toUpperCase());
+      headerTitleText.font = Font.boldSystemFont(13);
+      headerTitleText.textColor = Color.dynamic(PRIMARY_COLOR, Color.white());
+      
+      // Event
       const eventStack = widgetStack.addStack();
       eventStack.layoutVertically();
-      const eventNameText = eventStack.addText(upcomingEvent.name);
-      eventNameText.font = Font.lightSystemFont(30);
+      const eventNameText = eventStack.addText(eventUpcoming.name);
+      eventNameText.font = Font.mediumSystemFont(30);
   
       eventStack.addSpacer();
       
-      const eventStartTimeText = eventStack.addText(`Start: ${startTime}`);
+      const eventStartTimestamp = this.timestampMidnight + eventUpcoming.startOffset;
+      const eventStartTime = this.formatTime(eventStartTimestamp);
+      const eventStartTimeText = eventStack.addText(`Start: ${eventStartTime}`);
       eventStartTimeText.font = Font.regularSystemFont(16);
 
       eventStack.addSpacer(3);
 
-      const maxCharCount = 40;
-      const eventNoteText = eventStack.addText(upcomingEvent.note.slice(0, maxCharCount) + (upcomingEvent.length > maxCharCount ? '...' : '') || 'Siehe Stud.IP');
+      const eventCharCountMax = 40;
+      const eventNoteText = eventStack.addText(eventUpcoming.note.slice(0, eventCharCountMax) + (eventUpcoming.note.length > eventCharCountMax ? '...' : '') || 'Siehe Stud.IP');
       eventNoteText.font = Font.mediumSystemFont(13);
       eventNoteText.textOpacity = 0.5;
   
       eventStack.addSpacer();
+    } else if (!events.length) {
+      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
+    } else {
+      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
     }
   }
 
@@ -733,9 +709,9 @@ class HsrmTimetable {
     roomStack.backgroundColor = PRIMARY_COLOR;
     roomStack.cornerRadius = 4;
     roomStack.setPadding(2, 4, 2, 4);
-    const roomText = roomStack.addText(roomName);
-    roomText.font = Font.mediumSystemFont(10);
-    roomText.textColor = Color.white();
+    const roomNameText = roomStack.addText(roomName);
+    roomNameText.font = Font.mediumSystemFont(10);
+    roomNameText.textColor = Color.white();
   }
 
   /**
@@ -752,7 +728,7 @@ class HsrmTimetable {
     const noticeText = noticeStack.addText(text);
     noticeText.centerAlignText();
     noticeStack.addSpacer();
-  }
+  };
 
   /**
    * Renders a single event.
@@ -765,10 +741,10 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   renderEvent(parentStack, event, program, semester) {
-    const startTimestamp = this.timestampMidnight + event.startOffset;
-    const endTimestamp = this.timestampMidnight + event.endOffset;
-    const startTime = this.formatTime(startTimestamp);
-    const endTime = this.formatTime(endTimestamp);
+    const eventStartTimestamp = this.timestampMidnight + event.startOffset;
+    const eventEndTimestamp = this.timestampMidnight + event.endOffset;
+    const eventStartTime = this.formatTime(eventStartTimestamp);
+    const eventEndTime = this.formatTime(eventEndTimestamp);
 
     const eventStack = parentStack.addStack();
     eventStack.layoutVertically();
@@ -776,34 +752,34 @@ class HsrmTimetable {
     eventStack.url = this.getWebUrlForEvent(program, semester, this.currentWeekNumber, event.id);
 
     // Top Stack
-    const eventStackTop = eventStack.addStack();
-    eventStackTop.centerAlignContent();
-    eventStackTop.spacing = 10;
-    const eventNameText = eventStackTop.addText(event.name);
+    const topEventStack = eventStack.addStack();
+    topEventStack.centerAlignContent();
+    topEventStack.spacing = 10;
+    const eventNameText = topEventStack.addText(event.name);
     eventNameText.font = Font.regularSystemFont(this.isMediumWidget ? 15 : 18);
-    if (this.timestampNow >= startTimestamp) eventNameText.textColor = PRIMARY_COLOR; // The event is happening now
-    eventStackTop.addSpacer();
-    const eventTimeText = eventStackTop.addText(`${startTime}-${endTime}`);
+    if (this.timestampNow >= eventStartTimestamp) eventNameText.textColor = PRIMARY_COLOR; // The event is happening now
+    topEventStack.addSpacer();
+    const eventTimeText = topEventStack.addText(`${eventStartTime}-${eventEndTime}`);
     eventTimeText.font = Font.mediumMonospacedSystemFont(13);
     eventStack.addSpacer(4);
 
     // Bottom Stack
-    const eventStackBottom = eventStack.addStack();
-    eventStackBottom.centerAlignContent();
-    eventStackBottom.spacing = 10;
+    const bottomEventStack = eventStack.addStack();
+    bottomEventStack.centerAlignContent();
+    bottomEventStack.spacing = 10;
     if (event.lecturers.length) {
-      const lecturerText = eventStackBottom.addText(event.lecturers[0].name);
-      lecturerText.font = Font.mediumMonospacedSystemFont(13);
-      lecturerText.textOpacity = 0.5;
+      const eventLecturerText = bottomEventStack.addText(event.lecturers[0].name);
+      eventLecturerText.font = Font.mediumMonospacedSystemFont(13);
+      eventLecturerText.textOpacity = 0.5;
     }
-    eventStackBottom.addSpacer();
+    bottomEventStack.addSpacer();
 
     if (event.rooms.length) {
-      event.rooms.forEach((roomName) => this.renderRoom(eventStackBottom, roomName));
+      event.rooms.forEach((roomName) => this.renderRoom(bottomEventStack, roomName));
     } else {
-      this.renderRoom(eventStackBottom, this.getConferenceService(event.note))
+      this.renderRoom(bottomEventStack, this.getOnlineType(event.note))
     }
-  }
+  };
 
   /**
    * Renders the medium and large widget's content.
@@ -816,16 +792,42 @@ class HsrmTimetable {
   async renderWideWidgetContent(events, widgetStack) {
     const { program, semester } = this.getArgs();
 
-    const maxEventsToShow = this.isMediumWidget ? 2 : 4;
-    const eventsWithEndInFuture = events
+    if (this.isLargeWidget) {
+      // Header
+      const headerStack = widgetStack.addStack();
+      headerStack.centerAlignContent();
+
+      const headerTitleAndLogoStack = headerStack.addStack();
+      headerTitleAndLogoStack.centerAlignContent();
+      headerTitleAndLogoStack.url = this.getWebUrlForWeek(program, semester, this.currentWeekNumber);
+      headerTitleAndLogoStack.spacing = 10;
+
+      const headerLogoImage = headerTitleAndLogoStack.addImage(await this.getImage('hsrm-logo.png'));
+      headerLogoImage.imageSize = new Size(25, 25);
+      const headerTitleText = headerTitleAndLogoStack.addText('Stundenplan');
+      headerTitleText.font = Font.boldSystemFont(18);
+
+      headerStack.addSpacer();
+
+      const headerShortcutImage = headerStack.addImage(SFSymbol.named('book.closed.fill').image);
+      headerShortcutImage.imageSize = new Size(18, 18);
+      headerShortcutImage.tintColor = Color.dynamic(Color.black(), Color.white());
+      headerShortcutImage.url = this.studipUrl;
+
+      widgetStack.addSpacer(20);
+    }
+
+    const eventsCountMax = this.isMediumWidget ? 2 : 4;
+    const eventsFuture = events
       .filter((event) => (this.timestampMidnight + event.endOffset) >= this.timestampNow);
+    const eventsCountHidden = Math.max(0, eventsFuture.length - eventsCountMax);
     
     if (!events.length) {
       widgetStack.addSpacer();
       this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
-    } else if (eventsWithEndInFuture.length) {
-      eventsWithEndInFuture
-        .slice(0, maxEventsToShow)
+    } else if (eventsFuture.length) {
+      eventsFuture
+        .slice(0, eventsCountMax)
         .forEach((event) => this.renderEvent(widgetStack, event, program, semester));
     } else {
       widgetStack.addSpacer();
@@ -835,18 +837,17 @@ class HsrmTimetable {
     widgetStack.addSpacer();
     
     // Footer
-    const updateAvailable = await this.checkForUpdate();
-    const hiddenEventsCount = Math.max(0, eventsWithEndInFuture.length - maxEventsToShow);
+    const widgetUpdateAvailable = await this.checkForUpdate();
     const footerItems = [this.formatDate(this.timestampNow)];
-    if (updateAvailable) {
+    if (widgetUpdateAvailable) {
       footerItems.push('Update verfügbar');
-    } else if (hiddenEventsCount) {
-      footerItems.push(`${hiddenEventsCount === 1 ? 'Eine weitere Veranstaltung' : `${hiddenEventsCount} weitere Veranstaltungen`}`);
+    } else if (eventsCountHidden) {
+      footerItems.push(`${eventsCountHidden === 1 ? 'Eine weitere Veranstaltung' : `${eventsCountHidden} weitere Veranstaltungen`}`);
     }
     const footerText = widgetStack.addText(footerItems.join('  |  '));
     footerText.font = Font.mediumSystemFont(12);
     footerText.textOpacity = 0.5;
-    if (updateAvailable) footerText.url = this.githubRepoUrl;
+    if (widgetUpdateAvailable) footerText.url = this.githubRepoUrl;
   }
 
   /**
