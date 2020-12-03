@@ -640,21 +640,18 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   getOnlineType(string) {
+    const types = {
+      zoom: 'Zoom',
+      webex: 'Webex',
+      teams: 'MS Teams',
+      ilias: 'ILIAS'
+    };
     const haystack = string.toLowerCase();
+    const typesInHaystack = Object.keys(types).map((type) => {
+      if (haystack.includes(type)) return types[type];
+    });
 
-    let type = 'Online';
-    
-    if (haystack.includes('zoom')) {
-      type = 'Zoom';
-    } else if (haystack.includes('webex')) {
-      type = 'Webex';
-    } else if (haystack.includes('teams')) {
-      type = 'MS Teams';
-    } else if (haystack.includes('ilias')) {
-      type = 'ILIAS';
-    }
-
-    return type;
+    return typesInHaystack[0] ?? 'Online';
   }
 
   /**
