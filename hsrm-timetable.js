@@ -214,7 +214,7 @@ class HsrmTimetable {
   /**
    * Checks if there's a script update available on GitHub.
    *
-   * @return {boolean}
+   * @return {Promise<boolean>}
    * @memberof HsrmTimetable
    */
   async checkForUpdate() {
@@ -268,7 +268,7 @@ class HsrmTimetable {
    * Formats a timestamp to human readable date.
    *
    * @param {number} timestamp
-   * @return {string} 
+   * @return {string}
    * @memberof HsrmTimetable
    */
   formatDate(timestamp) {
@@ -324,6 +324,7 @@ class HsrmTimetable {
    *
    * @param {string} fileName
    * @param {array|Object} content
+   * @return {void} 
    * @memberof HsrmTimetable
    */
   writeToFile(fileName, content) {
@@ -344,7 +345,7 @@ class HsrmTimetable {
    * Reads from a file and returns its JSON content.
    *
    * @param {string} fileName
-   * @return {array} 
+   * @return {array|Object} 
    * @memberof HsrmTimetable
    */
   readFromFile(fileName) {
@@ -367,7 +368,7 @@ class HsrmTimetable {
    *
    * @param {string} username
    * @param {string} password
-   * @return {Object} 
+   * @return {Promise<Object>} 
    * @memberof HsrmTimetable
    */
   async loginUser(username, password) {
@@ -391,7 +392,7 @@ class HsrmTimetable {
    * @param {string} program
    * @param {number} semester
    * @param {number} weekNumber
-   * @return {array} 
+   * @return {Promise<array|Object>} 
    * @memberof HsrmTimetable
    */
   async fetchEvents(token, program, semester, weekNumber) {
@@ -415,7 +416,7 @@ class HsrmTimetable {
    * Fetches all lecturers.
    *
    * @param {string} token
-   * @return {array} 
+   * @return {Promise<array|Object>} 
    * @memberof HsrmTimetable
    */
   async fetchLecturers(token) {
@@ -491,7 +492,7 @@ class HsrmTimetable {
    * @param {string} program
    * @param {number} semester
    * @param {number} weekNumber
-   * @return {Object} 
+   * @return {Promise<Object>} 
    * @memberof HsrmTimetable
    */
   async getData(program, semester, weekNumber) {
@@ -567,7 +568,7 @@ class HsrmTimetable {
   /**
    * Renders the widget.
    *
-   * @return {Widget}
+   * @return {Promise<Widget>}
    * @memberof HsrmTimetable
    */
   async renderWidget() {
@@ -644,59 +645,6 @@ class HsrmTimetable {
   }
 
   /**
-   * Renders the small widget's content.
-   *
-   * @param {Object[]} events
-   * @param {WidgetStack} widgetStack
-   * @param {Widget} widget
-   * @return {void}
-   * @memberof HsrmTimetable
-   */
-  async renderSmallWidgetContent(events, widgetStack, widget) {
-    const { program, semester } = this.getArgs();
-
-    const eventUpcoming = events
-      .find((event) => (this.timestampMidnight + event.startOffset) >= this.timestampNow);
-
-    // Small widgets only support one tap area
-    widget.url = eventUpcoming?.note ? this.getWebUrlForEvent(program, semester, this.currentWeekNumber, eventUpcoming.id) : this.studipUrl;
-
-    if (eventUpcoming) {    
-      // Header
-      const headerStack = widgetStack.addStack();
-      const headerTitleText = headerStack.addText('Next Up'.toUpperCase());
-      headerTitleText.font = Font.boldSystemFont(13);
-      headerTitleText.textColor = Color.dynamic(PRIMARY_COLOR, Color.white());
-      
-      // Event
-      const eventStack = widgetStack.addStack();
-      eventStack.layoutVertically();
-      const eventNameText = eventStack.addText(eventUpcoming.name);
-      eventNameText.font = Font.mediumSystemFont(30);
-  
-      eventStack.addSpacer();
-      
-      const eventStartTimestamp = this.timestampMidnight + eventUpcoming.startOffset;
-      const eventStartTime = this.formatTime(eventStartTimestamp);
-      const eventStartTimeText = eventStack.addText(`Start: ${eventStartTime}`);
-      eventStartTimeText.font = Font.regularSystemFont(16);
-
-      eventStack.addSpacer(3);
-
-      const eventCharCountMax = 40;
-      const eventNoteText = eventStack.addText(eventUpcoming.note.slice(0, eventCharCountMax) + (eventUpcoming.note.length > eventCharCountMax ? '...' : '') || 'Siehe Stud.IP');
-      eventNoteText.font = Font.mediumSystemFont(13);
-      eventNoteText.textOpacity = 0.5;
-  
-      eventStack.addSpacer();
-    } else if (!events.length) {
-      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
-    } else {
-      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
-    }
-  }
-
-  /**
    * Renders a room.
    *
    * @param {WidgetStack} parentStack
@@ -719,13 +667,15 @@ class HsrmTimetable {
    *
    * @param {WidgetStack} parentStack
    * @param {string} text
+   * @param {number} fontSize
    * @return {void}
    * @memberof HsrmTimetable
    */
-  renderNotice(parentStack, text) {
+  renderNotice(parentStack, text, fontSize) {
     const noticeStack = parentStack.addStack();
     noticeStack.addSpacer();
     const noticeText = noticeStack.addText(text);
+    noticeText.font = Font.regularSystemFont(fontSize || 16);
     noticeText.centerAlignText();
     noticeStack.addSpacer();
   };
@@ -786,7 +736,7 @@ class HsrmTimetable {
    *
    * @param {Object[]} events
    * @param {WidgetStack} widgetStack
-   * @return {void}
+   * @return {Promise<void>}
    * @memberof HsrmTimetable
    */
   async renderWideWidgetContent(events, widgetStack) {
@@ -824,14 +774,14 @@ class HsrmTimetable {
     
     if (!events.length) {
       widgetStack.addSpacer();
-      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
+      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen', this.isLargeWidget ? 18 : 16);
     } else if (eventsFuture.length) {
       eventsFuture
         .slice(0, eventsCountMax)
         .forEach((event) => this.renderEvent(widgetStack, event, program, semester));
     } else {
       widgetStack.addSpacer();
-      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
+      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen', this.isLargeWidget ? 18 : 16);
     }
     
     widgetStack.addSpacer();
@@ -848,6 +798,57 @@ class HsrmTimetable {
     footerText.font = Font.mediumSystemFont(12);
     footerText.textOpacity = 0.5;
     if (widgetUpdateAvailable) footerText.url = this.githubRepoUrl;
+  }
+  
+  /**
+   * Renders the small widget's content.
+   *
+   * @param {Object[]} events
+   * @param {WidgetStack} widgetStack
+   * @param {Widget} widget
+   * @return {void}
+   * @memberof HsrmTimetable
+   */
+  renderSmallWidgetContent(events, widgetStack, widget) {
+    const { program, semester } = this.getArgs();
+
+    const eventUpcoming = events
+      .find((event) => (this.timestampMidnight + event.startOffset) >= this.timestampNow);
+
+    // Small widgets only support a single tap area
+    widget.url = eventUpcoming?.note ? this.getWebUrlForEvent(program, semester, this.currentWeekNumber, eventUpcoming.id) : this.studipUrl;
+
+    if (eventUpcoming) {    
+      // Header
+      const headerStack = widgetStack.addStack();
+      const headerTitleText = headerStack.addText('Next Up'.toUpperCase());
+      headerTitleText.font = Font.boldSystemFont(13);
+      headerTitleText.textColor = Color.dynamic(PRIMARY_COLOR, Color.white());
+      
+      // Event
+      const eventStack = widgetStack.addStack();
+      eventStack.layoutVertically();
+      const eventNameText = eventStack.addText(eventUpcoming.name);
+      eventNameText.font = Font.mediumSystemFont(23);
+  
+      eventStack.addSpacer();
+      
+      const eventStartTimestamp = this.timestampMidnight + eventUpcoming.startOffset;
+      const eventStartTime = this.formatTime(eventStartTimestamp);
+      const eventStartTimeText = eventStack.addText(`Start: ${eventStartTime}`);
+      eventStartTimeText.font = Font.regularSystemFont(16);
+
+      eventStack.addSpacer(3);
+
+      const eventCharCountMax = 40;
+      const eventNoteText = eventStack.addText(eventUpcoming.note.slice(0, eventCharCountMax) + (eventUpcoming.note.length > eventCharCountMax ? '...' : '') || 'Siehe Stud.IP');
+      eventNoteText.font = Font.mediumSystemFont(13);
+      eventNoteText.textOpacity = 0.5;
+    } else if (!events.length) {
+      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen', 14);
+    } else {
+      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen', 14);
+    }
   }
 
   /**
