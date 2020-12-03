@@ -98,6 +98,19 @@ class HsrmTimetable {
         endOffset: 69300000
       }
     ];
+    this.textStrings = {
+      headerTitle: 'Stundenplan',
+      headerTitleNext: 'NEXT UP',
+      noEvents: 'Du hast heute keine Veranstaltung',
+      noUpcomingEvents: 'Du hast heute keine weiteren Veranstaltungen',
+      notLoggedIn: 'Nicht eingeloggt oder falsche Zugangsdaten',
+      wrongLogin: 'Falsche Zugangsdaten',
+      updateAvailable: 'Update verfügbar',
+      oneAdditionalEvent: 'Eine weitere Veranstaltung',
+      xAdditionalEvents: '{count} weitere Veranstaltungen',
+      seeStudip: 'Siehe Stud.IP',
+      startAtX: 'Start: {time}'
+    }
   }
 
   /**
@@ -356,7 +369,7 @@ class HsrmTimetable {
     );
 
     if (PERSISTENCE_ENABLED && this.fileManager.fileExists(path)) {
-      console.log(`Loading data from file "${fileName}"`);
+      console.log(`Reading from file "${fileName}"`);
       return JSON.parse(this.fileManager.readString(path));
     }
 
@@ -381,7 +394,7 @@ class HsrmTimetable {
 
       return json;
     } catch (error) {
-      return { error: 'Falsche Zugangsdaten' };
+      return { error: this.textStrings.wrongLogin };
     }
   }
 
@@ -408,7 +421,7 @@ class HsrmTimetable {
 
       return json;
     } catch (error) {
-      return { error: 'Nicht eingeloggt oder falsche Zugangsdaten' };
+      return { error: this.textStrings.notLoggedIn };
     }
   }
 
@@ -430,7 +443,7 @@ class HsrmTimetable {
 
       return json;
     } catch (error) {
-      return { error: 'Nicht eingeloggt oder falsche Zugangsdaten' };
+      return { error: this.textStrings.notLoggedIn };
     }
   }
 
@@ -761,7 +774,7 @@ class HsrmTimetable {
 
       const headerLogoImage = headerTitleAndLogoStack.addImage(await this.getImage('hsrm-logo.png'));
       headerLogoImage.imageSize = new Size(25, 25);
-      const headerTitleText = headerTitleAndLogoStack.addText('Stundenplan');
+      const headerTitleText = headerTitleAndLogoStack.addText(this.textStrings.headerTitle);
       headerTitleText.font = Font.boldSystemFont(18);
 
       headerStack.addSpacer();
@@ -781,14 +794,14 @@ class HsrmTimetable {
     
     if (!events.length) {
       widgetStack.addSpacer();
-      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
+      this.renderNotice(widgetStack, this.textStrings.noEvents);
     } else if (eventsFuture.length) {
       eventsFuture
         .slice(0, eventsCountMax)
         .forEach((event) => this.renderEvent(widgetStack, event, program, semester));
     } else {
       widgetStack.addSpacer();
-      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
+      this.renderNotice(widgetStack, this.textStrings.noUpcomingEvents);
     }
     
     widgetStack.addSpacer();
@@ -797,9 +810,13 @@ class HsrmTimetable {
     const widgetUpdateAvailable = await this.checkForUpdate();
     const footerItems = [this.formatDate(this.timestampNow)];
     if (widgetUpdateAvailable) {
-      footerItems.push('Update verfügbar');
+      footerItems.push(this.textStrings.updateAvailable);
     } else if (eventsCountHidden) {
-      footerItems.push(`${eventsCountHidden === 1 ? 'Eine weitere Veranstaltung' : `${eventsCountHidden} weitere Veranstaltungen`}`);
+      const footerItem = (eventsCountHidden === 1) 
+        ? this.textStrings.oneAdditionalEvent 
+        : this.textStrings.xAdditionalEvents.replace('{count}', eventsCountHidden);
+
+      footerItems.push(footerItem);
     }
     const footerText = widgetStack.addText(footerItems.join('  |  '));
     footerText.font = Font.mediumSystemFont(12);
@@ -828,7 +845,7 @@ class HsrmTimetable {
     if (eventUpcoming) {    
       // Header
       const headerStack = widgetStack.addStack();
-      const headerTitleText = headerStack.addText('Next Up'.toUpperCase());
+      const headerTitleText = headerStack.addText(this.textStrings.headerTitleNext);
       headerTitleText.font = Font.boldSystemFont(13);
       headerTitleText.textColor = Color.dynamic(PRIMARY_COLOR, Color.white());
       
@@ -842,19 +859,19 @@ class HsrmTimetable {
       
       const eventStartTimestamp = this.timestampMidnight + eventUpcoming.startOffset;
       const eventStartTime = this.formatTime(eventStartTimestamp);
-      const eventStartTimeText = eventStack.addText(`Start: ${eventStartTime}`);
+      const eventStartTimeText = eventStack.addText(this.textStrings.startAtX.replace('{time}', eventStartTime));
       eventStartTimeText.font = Font.regularSystemFont(16);
 
       eventStack.addSpacer(3);
 
       const eventCharCountMax = 40;
-      const eventNoteText = eventStack.addText(eventUpcoming.note.slice(0, eventCharCountMax) + (eventUpcoming.note.length > eventCharCountMax ? '...' : '') || 'Siehe Stud.IP');
+      const eventNoteText = eventStack.addText(eventUpcoming.note.slice(0, eventCharCountMax) + (eventUpcoming.note.length > eventCharCountMax ? '...' : '') || this.textStrings.seeStudip);
       eventNoteText.font = Font.mediumSystemFont(13);
       eventNoteText.textOpacity = 0.5;
     } else if (!events.length) {
-      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
+      this.renderNotice(widgetStack, this.textStrings.noEvents);
     } else {
-      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
+      this.renderNotice(widgetStack, this.textStrings.noUpcomingEvents);
     }
   }
 
