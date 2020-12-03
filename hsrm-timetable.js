@@ -667,15 +667,22 @@ class HsrmTimetable {
    *
    * @param {WidgetStack} parentStack
    * @param {string} text
-   * @param {number} fontSize
    * @return {void}
    * @memberof HsrmTimetable
    */
-  renderNotice(parentStack, text, fontSize) {
+  renderNotice(parentStack, text) {
+    let fontSize = 16;
+
+    if (this.isSmallWidget) {
+      fontSize = 14;
+    } else if (this.isLargeWidget) {
+      fontSize = 18;
+    }
+
     const noticeStack = parentStack.addStack();
     noticeStack.addSpacer();
     const noticeText = noticeStack.addText(text);
-    noticeText.font = Font.regularSystemFont(fontSize || 16);
+    noticeText.font = Font.regularSystemFont(fontSize);
     noticeText.centerAlignText();
     noticeStack.addSpacer();
   };
@@ -774,14 +781,14 @@ class HsrmTimetable {
     
     if (!events.length) {
       widgetStack.addSpacer();
-      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen', this.isLargeWidget ? 18 : 16);
+      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
     } else if (eventsFuture.length) {
       eventsFuture
         .slice(0, eventsCountMax)
         .forEach((event) => this.renderEvent(widgetStack, event, program, semester));
     } else {
       widgetStack.addSpacer();
-      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen', this.isLargeWidget ? 18 : 16);
+      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
     }
     
     widgetStack.addSpacer();
@@ -845,9 +852,9 @@ class HsrmTimetable {
       eventNoteText.font = Font.mediumSystemFont(13);
       eventNoteText.textOpacity = 0.5;
     } else if (!events.length) {
-      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen', 14);
+      this.renderNotice(widgetStack, 'Du hast heute keine Veranstaltungen');
     } else {
-      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen', 14);
+      this.renderNotice(widgetStack, 'Du hast heute keine weiteren Veranstaltungen');
     }
   }
 
