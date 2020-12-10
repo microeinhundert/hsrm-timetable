@@ -592,7 +592,7 @@ class HsrmTimetable {
    */
   async renderWidget() {
     const { program, semester } = this.getArgs();
-    const data = await this.getData(program, semester, this.currentDayOfWeekNumber, this.currentDayOfWeekNumber);
+    const data = await this.getData(program, semester, this.currentWeekNumber, this.currentDayOfWeekNumber);
     const widget = new ListWidget();
     
     const widgetBackgroundGradient = new LinearGradient();
