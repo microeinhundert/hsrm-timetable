@@ -101,7 +101,7 @@ class HsrmTimetable {
     this.textStrings = {
       headerTitle: 'Stundenplan',
       headerTitleNext: 'NEXT UP',
-      noEvents: 'Du hast heute keine Veranstaltung',
+      noEvents: 'Du hast heute keine Veranstaltungen',
       noUpcomingEvents: 'Du hast heute keine weiteren Veranstaltungen',
       notLoggedIn: 'Nicht eingeloggt oder falsche Zugangsdaten',
       wrongLogin: 'Falsche Zugangsdaten',
@@ -405,10 +405,11 @@ class HsrmTimetable {
    * @param {string} program
    * @param {number} semester
    * @param {number} weekNumber
+   * @param {number} dayOfWeekNumber
    * @return {Promise<array|Object>} 
    * @memberof HsrmTimetable
    */
-  async fetchEvents(token, program, semester, weekNumber) {
+  async fetchEvents(token, program, semester, weekNumber, dayOfWeekNumber) {
     try {
       const request = new Request(
         `${this.webUrl}api/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}/events`
@@ -455,7 +456,12 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   filterEvents(events) {
-    return events.filter(({ day, shortname, timeslots }) => this.daysOfWeek.includes(day) && shortname && timeslots?.length);
+    return events.filter(
+      ({ day, shortname, timeslots }) => 
+        this.daysOfWeek.findIndex((d) => d === day) === this.currentDayOfWeekNumber 
+        && shortname 
+        && timeslots?.length
+      );
   }
 
   /**
@@ -505,13 +511,14 @@ class HsrmTimetable {
    * @param {string} program
    * @param {number} semester
    * @param {number} weekNumber
+   * @param {number} dayOfWeekNumber
    * @return {Promise<Object>} 
    * @memberof HsrmTimetable
    */
-  async getData(program, semester, weekNumber) {
+  async getData(program, semester, weekNumber, dayOfWeekNumber) {
     const { username, password } = this.getArgs();
 
-    const eventsFileName = `events-${program}${semester}-kw${weekNumber}.json`;
+    const eventsFileName = `events-${program}${semester}-kw${weekNumber}-${dayOfWeekNumber}.json`;
     const lecturersFileName = 'lecturers.json';
 
     let events = this.readFromFile(eventsFileName);
@@ -526,13 +533,13 @@ class HsrmTimetable {
       }
 
       if (!events.length) {
-        events = await this.fetchEvents(token, program, semester, weekNumber);
+        events = await this.fetchEvents(token, program, semester, weekNumber, dayOfWeekNumber);
 
         if (!events.error) {
           events = this.filterEvents(events).map((event) => {
             return {
               id: event.id,
-              dayOfWeek: this.daysOfWeek.findIndex((day) => day === event.day),
+              dayOfWeek: this.currentDayOfWeekNumber,
               name: event.shortname,
               note: event.note,
               rooms: event.rooms,
@@ -586,7 +593,7 @@ class HsrmTimetable {
    */
   async renderWidget() {
     const { program, semester } = this.getArgs();
-    const data = await this.getData(program, semester, this.currentWeekNumber);
+    const data = await this.getData(program, semester, this.currentDayOfWeekNumber, this.currentDayOfWeekNumber);
     const widget = new ListWidget();
     
     const widgetBackgroundGradient = new LinearGradient();
