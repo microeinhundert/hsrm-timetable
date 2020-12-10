@@ -405,11 +405,10 @@ class HsrmTimetable {
    * @param {string} program
    * @param {number} semester
    * @param {number} weekNumber
-   * @param {number} dayOfWeekNumber
    * @return {Promise<array|Object>} 
    * @memberof HsrmTimetable
    */
-  async fetchEvents(token, program, semester, weekNumber, dayOfWeekNumber) {
+  async fetchEvents(token, program, semester, weekNumber) {
     try {
       const request = new Request(
         `${this.webUrl}api/programs/${program}/targetgroups/${program}${semester}/weeks/kw${weekNumber}/events`
@@ -457,10 +456,10 @@ class HsrmTimetable {
    */
   filterEvents(events) {
     return events.filter(
-      ({ day, shortname, timeslots }) => 
-        this.daysOfWeek.findIndex((d) => d === day) === this.currentDayOfWeekNumber 
-        && shortname 
-        && timeslots?.length
+      (event) => 
+        this.daysOfWeek.findIndex((day) => day === event.day) === this.currentDayOfWeekNumber 
+        && event.shortname 
+        && event.timeslots?.length
       );
   }
 
@@ -533,7 +532,7 @@ class HsrmTimetable {
       }
 
       if (!events.length) {
-        events = await this.fetchEvents(token, program, semester, weekNumber, dayOfWeekNumber);
+        events = await this.fetchEvents(token, program, semester, weekNumber);
 
         if (!events.error) {
           events = this.filterEvents(events).map((event) => {
