@@ -535,8 +535,8 @@ class HsrmTimetable {
         events = await this.fetchEvents(token, program, semester, weekNumber);
 
         if (!events.error) {
-          events = this.filterEvents(events).map((event) => {
-            return {
+          events = this.filterEvents(events)
+            .map((event) => ({
               id: event.id,
               dayOfWeek: this.currentDayOfWeekNumber,
               name: event.shortname,
@@ -544,8 +544,9 @@ class HsrmTimetable {
               rooms: event.rooms,
               lecturers: this.getEventLecturers(event.lecturers, lecturers),
               ...this.getEventTimeslots(event.timeslots)
-            }
-          });
+            }))
+            .sort((a, b) => a.startOffset - b.startOffset);
+
           this.writeToFile(eventsFileName, events);
         }
       }
@@ -621,16 +622,11 @@ class HsrmTimetable {
 
       return widget;
     }
-
-    // All events today
-    const eventsToday = data.events
-      .filter((event) => event.dayOfWeek === this.currentDayOfWeekNumber)
-      .sort((a, b) => a.startOffset - b.startOffset);
     
     if (this.isSmallWidget) {
-      await this.renderSmallWidgetContent(eventsToday, widgetStack, widget);
+      await this.renderSmallWidgetContent(data.events, widgetStack, widget);
     } else {
-      await this.renderWideWidgetContent(eventsToday, widgetStack);
+      await this.renderWideWidgetContent(data.events, widgetStack);
     }
 
     this.setWidgetRefresh(widget);
