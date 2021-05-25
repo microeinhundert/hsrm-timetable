@@ -12,7 +12,7 @@ class HsrmTimetable {
     this.defaultUsername = '';
     this.defaultPassword = '';
     this.defaultProgram = 'bmm';
-    this.defaultSemester = 4;
+    this.defaultSemester = 1;
     this.webUrl = 'https://mm.dcsm.info/';
     this.studipUrl = 'https://studip.hs-rm.de/';
     this.githubRepoUrl = 'https://github.com/microeinhundert/hsrm-timetable/';
