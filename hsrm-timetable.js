@@ -1,4 +1,4 @@
-const VERSION = 'v1.0.1';
+const VERSION = 'v1.0.2';
 const PERSISTENCE_ENABLED = true;
 const PRIMARY_COLOR = new Color('c20008');
 
@@ -124,7 +124,7 @@ class HsrmTimetable {
     const widget = await this.renderWidget();
 
     if (!config.runsInWidget) {
-      await widget.presentSmall();
+      await widget.presentMedium();
     } else {
       Script.setWidget(widget);
     }
@@ -202,7 +202,7 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   get isSmallWidget() {
-    return config.runsInWidget ? config.widgetFamily === 'small' : true;
+    return config.widgetFamily === 'small';
   }
 
   /**
@@ -213,7 +213,7 @@ class HsrmTimetable {
    * @memberof HsrmTimetable
    */
   get isMediumWidget() {
-    return config.widgetFamily === 'medium';
+    return config.runsInWidget ? config.widgetFamily === 'medium' : true;
   } 
 
   /**
@@ -463,6 +463,7 @@ class HsrmTimetable {
         this.daysOfWeek.findIndex((day) => day === event.day) === this.currentDayOfWeekNumber 
         && event.shortname 
         && event.timeslots?.length
+        && event.lecturers?.length
       );
   }
 
