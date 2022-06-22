@@ -20,7 +20,7 @@ class HsrmTimetable {
     this.persistenceFolderName = 'hsrmTimetable';
     this.images = [{
       fileName: 'hsrm-logo.png',
-      url: 'https://www.dropbox.com/s/pcio8g6lygj27p0/hsrm-logo.png?raw=1'
+      url: 'https://raw.githubusercontent.com/microeinhundert/hsrm-timetable/master/hsrm-logo.png'
     }];
     this.daysOfWeek = [
       'mon',
