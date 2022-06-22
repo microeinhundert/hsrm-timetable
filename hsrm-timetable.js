@@ -1,4 +1,4 @@
-const VERSION = 'v1.0.2';
+const VERSION = 'v1.0.3';
 const PERSISTENCE_ENABLED = true;
 const PRIMARY_COLOR = new Color('c20008');
 
